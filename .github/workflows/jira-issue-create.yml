@@ -1,0 +1,185 @@
+name: GitHub Issue → Jira 이슈 생성 + 브랜치 생성
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  sync-to-jira:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 메타 정보 추출 (라벨 → 이슈타입 / 브랜치 프리픽스)
+        id: meta
+        env:
+          LABELS_JSON: ${{ toJson(github.event.issue.labels) }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          ISSUE_TYPE="Task"
+          BRANCH_PREFIX="chore"
+
+          if echo "$LABELS_JSON" | grep -qi '"feat"'; then
+            ISSUE_TYPE="Story"
+            BRANCH_PREFIX="feat"
+          elif echo "$LABELS_JSON" | grep -qi '"fix"'; then
+            ISSUE_TYPE="Bug"
+            BRANCH_PREFIX="fix"
+          fi
+
+          echo "issue_type=$ISSUE_TYPE"   >> "$GITHUB_OUTPUT"
+          echo "branch_prefix=$BRANCH_PREFIX" >> "$GITHUB_OUTPUT"
+
+          # 브랜치 슬러그: 컨벤션 접두사(feat:, fix: …) 제거 → 영문/숫자만 남겨 하이픈화
+          SLUG=$(echo "$ISSUE_TITLE" \
+            | sed 's/^[a-zA-Z]*:[[:space:]]*//' \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9]/-/g' \
+            | sed 's/-\+/-/g' \
+            | sed 's/^-\|-$//g' \
+            | cut -c1-40)
+
+          # 슬러그가 비거나 하이픈만 남으면 이슈 번호로 대체
+          if [ -z "$(echo "$SLUG" | tr -d '-')" ]; then
+            SLUG="issue-${{ github.event.issue.number }}"
+          fi
+
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+
+      - name: Jira 이슈 생성
+        id: create_jira
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+          GH_ISSUE_TITLE:  ${{ github.event.issue.title }}
+          GH_ISSUE_BODY:   ${{ github.event.issue.body }}
+          GH_ISSUE_URL:    ${{ github.event.issue.html_url }}
+          GH_ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          GH_ISSUE_TYPE:   ${{ steps.meta.outputs.issue_type }}
+        run: |
+          AUTH=$(echo -n "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" | base64 -w 0)
+
+          PAYLOAD=$(jq -n \
+            --arg summary    "$GH_ISSUE_TITLE" \
+            --arg itype      "$GH_ISSUE_TYPE" \
+            --arg gh_url     "$GH_ISSUE_URL" \
+            --arg author     "$GH_ISSUE_AUTHOR" \
+            --arg body       "${GH_ISSUE_BODY:-}" \
+            '{
+              fields: {
+                project:     { key: "GRT" },
+                summary:     $summary,
+                issuetype:   { name: $itype },
+                description: {
+                  type: "doc", version: 1,
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "GitHub Issue", marks: [{ type: "strong" }] },
+                        { type: "text", text: ": " },
+                        { type: "text", text: $gh_url,
+                          marks: [{ type: "link", attrs: { href: $gh_url } }] }
+                      ]
+                    },
+                    {
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "작성자 (GitHub): ", marks: [{ type: "strong" }] },
+                        { type: "text", text: $author }
+                      ]
+                    },
+                    { type: "rule" },
+                    {
+                      type: "paragraph",
+                      content: [ { type: "text", text: $body } ]
+                    }
+                  ]
+                }
+              }
+            }')
+
+          RESPONSE=$(curl -sf -X POST \
+            -H "Authorization: Basic $AUTH" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$JIRA_BASE_URL/rest/api/3/issue")
+
+          echo "Jira response: $RESPONSE"
+          JIRA_KEY=$(echo "$RESPONSE" | jq -r '.key // empty')
+
+          if [ -z "$JIRA_KEY" ]; then
+            echo "::error::Jira 이슈 생성 실패. 응답: $RESPONSE"
+            exit 1
+          fi
+
+          echo "jira_key=$JIRA_KEY" >> "$GITHUB_OUTPUT"
+          echo "jira_url=$JIRA_BASE_URL/browse/$JIRA_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: 브랜치 생성 (${{ steps.meta.outputs.branch_prefix }}/${{ steps.create_jira.outputs.jira_key }}-…)
+        id: create_branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          JIRA_KEY="${{ steps.create_jira.outputs.jira_key }}"
+          BRANCH="${{ steps.meta.outputs.branch_prefix }}/${JIRA_KEY}-${{ steps.meta.outputs.slug }}"
+          echo "branch_name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          # 기본 브랜치(main)의 최신 SHA 조회
+          SHA=$(gh api "repos/${{ github.repository }}/git/ref/heads/main" --jq '.object.sha')
+
+          # 브랜치 생성
+          gh api \
+            -X POST \
+            "repos/${{ github.repository }}/git/refs" \
+            -f ref="refs/heads/$BRANCH" \
+            -f sha="$SHA"
+
+          echo "브랜치 생성 완료: $BRANCH"
+
+      - name: GitHub Issue 제목 업데이트 ([JIRA_KEY] 원제목)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          JIRA_KEY="${{ steps.create_jira.outputs.jira_key }}"
+          ORIGINAL="${{ github.event.issue.title }}"
+          NEW_TITLE="[$JIRA_KEY] $ORIGINAL"
+
+          gh api \
+            -X PATCH \
+            "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}" \
+            -f title="$NEW_TITLE"
+
+          echo "제목 업데이트: $NEW_TITLE"
+
+      - name: GitHub Issue에 Jira 링크 + 브랜치 정보 코멘트
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          JIRA_KEY="${{ steps.create_jira.outputs.jira_key }}"
+          JIRA_URL="${{ steps.create_jira.outputs.jira_url }}"
+          BRANCH="${{ steps.create_branch.outputs.branch_name }}"
+          AUTHOR="${{ github.event.issue.user.login }}"
+
+          BODY=$(cat <<EOF
+          > **Jira 이슈가 자동 생성되었습니다.**
+          >
+          > | 항목 | 내용 |
+          > |------|------|
+          > | Jira 티켓 | [$JIRA_KEY]($JIRA_URL) |
+          > | 브랜치 | \`$BRANCH\` |
+          > | GitHub 작성자 | @$AUTHOR |
+
+          \`\`\`bash
+          git fetch origin
+          git checkout $BRANCH
+          \`\`\`
+          EOF
+          )
+
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"

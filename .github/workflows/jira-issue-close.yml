@@ -1,0 +1,118 @@
+name: GitHub Issue 닫기 → Jira 이슈 완료 처리
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: read
+
+jobs:
+  close-jira-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 제목에서 Jira 키 추출 ([GRT-XX])
+        id: find_key
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          JIRA_KEY=$(echo "$ISSUE_TITLE" | grep -oP '(?<=\[)[A-Z]+-\d+(?=\])' | head -1)
+
+          if [ -z "$JIRA_KEY" ]; then
+            echo "::warning::Jira 키를 제목에서 찾을 수 없습니다: $ISSUE_TITLE"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "jira_key=$JIRA_KEY" >> "$GITHUB_OUTPUT"
+            echo "found=true"         >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 사용 가능한 Transition 목록 조회
+        id: transitions
+        if: steps.find_key.outputs.found == 'true'
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          AUTH=$(echo -n "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" | base64 -w 0)
+          JIRA_KEY="${{ steps.find_key.outputs.jira_key }}"
+
+          RESPONSE=$(curl -sf \
+            -H "Authorization: Basic $AUTH" \
+            -H "Content-Type: application/json" \
+            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/transitions")
+
+          echo "Transitions: $RESPONSE"
+
+          # "Done" → "완료" → "Closed" → "Close" 순으로 매칭 시도
+          TRANSITION_ID=$(echo "$RESPONSE" | jq -r '
+            .transitions[]
+            | select(
+                (.name | ascii_downcase) == "done" or
+                (.name | ascii_downcase) == "완료" or
+                (.name | ascii_downcase) == "closed" or
+                (.name | ascii_downcase) == "close"
+              )
+            | .id' | head -1)
+
+          if [ -z "$TRANSITION_ID" ]; then
+            echo "::error::Done/완료 Transition을 찾을 수 없습니다. 전체 목록: $RESPONSE"
+            exit 1
+          fi
+
+          echo "transition_id=$TRANSITION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Jira 이슈 완료 처리
+        if: steps.find_key.outputs.found == 'true'
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          AUTH=$(echo -n "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" | base64 -w 0)
+          JIRA_KEY="${{ steps.find_key.outputs.jira_key }}"
+          TRANSITION_ID="${{ steps.transitions.outputs.transition_id }}"
+
+          curl -sf -X POST \
+            -H "Authorization: Basic $AUTH" \
+            -H "Content-Type: application/json" \
+            -d "{\"transition\": {\"id\": \"$TRANSITION_ID\"}}" \
+            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/transitions"
+
+          echo "Jira 이슈 $JIRA_KEY → Done 처리 완료"
+
+      - name: Jira 이슈에 GitHub close 코멘트 추가
+        if: steps.find_key.outputs.found == 'true'
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+          GH_ISSUE_URL:    ${{ github.event.issue.html_url }}
+          GH_CLOSED_BY:    ${{ github.event.issue.user.login }}
+        run: |
+          AUTH=$(echo -n "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" | base64 -w 0)
+          JIRA_KEY="${{ steps.find_key.outputs.jira_key }}"
+
+          PAYLOAD=$(jq -n \
+            --arg gh_url    "$GH_ISSUE_URL" \
+            --arg closed_by "$GH_CLOSED_BY" \
+            '{
+              body: {
+                type: "doc", version: 1,
+                content: [{
+                  type: "paragraph",
+                  content: [
+                    { type: "text", text: "GitHub Issue가 닫혔습니다. ", marks: [{ type: "strong" }] },
+                    { type: "text", text: $gh_url,
+                      marks: [{ type: "link", attrs: { href: $gh_url } }] },
+                    { type: "text", text: " (by @\($closed_by))" }
+                  ]
+                }]
+              }
+            }')
+
+          curl -sf -X POST \
+            -H "Authorization: Basic $AUTH" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/comment"
