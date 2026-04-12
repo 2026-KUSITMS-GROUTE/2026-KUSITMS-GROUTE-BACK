@@ -1,2 +1,2 @@
 # 2026-KUSITMS-GLIT-BACK
-KUSITMS 33기 밋업프로젝트 GROUTE의 백엔드 레포지토리입니다
+KUSITMS 33기 밋업프로젝트 GLIT의 백엔드 레포지토리입니다
