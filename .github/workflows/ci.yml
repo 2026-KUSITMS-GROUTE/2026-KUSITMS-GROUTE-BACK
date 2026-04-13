@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - 'ci/#' # 테스트를 위해 현재 브랜치 패턴 추가 (나중에 삭제)
   pull_request:
     branches:
       - dev
@@ -35,6 +36,13 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build -x test
 
+      # 1. OIDC 정보 확인용 로그 (나중에 삭제)
+      - name: Debug OIDC Info
+        run: |
+          echo "Organization: ${{ github.repository_owner }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Current Branch: ${{ github.ref_name }}"
+
       - name: Docker 이미지 빌드 검증 (PR용)
         if: github.event_name == 'pull_request'
         run: docker build -t test-image .
@@ -42,10 +50,11 @@ jobs:
       - name: Set Role ARN by branch
         if: github.event_name == 'push'
         run: |
-          if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            echo "ROLE_ARN=${{ secrets.STG_ROLE_ARN }}" >> $GITHUB_ENV
-          else
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
             echo "ROLE_ARN=${{ secrets.PROD_ROLE_ARN }}" >> $GITHUB_ENV
+          else
+            # dev 브랜치와 현재 작업 중인 ci/# 브랜치 모두 STG 권한 사용
+            echo "ROLE_ARN=${{ secrets.STG_ROLE_ARN }}" >> $GITHUB_ENV
           fi
 
       - name: Configure AWS credentials (OIDC)
