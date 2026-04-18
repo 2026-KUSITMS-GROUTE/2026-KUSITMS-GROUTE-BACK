@@ -4,75 +4,351 @@
     <meta charset="UTF-8">
     <title>Error Code 목록</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 2rem;
-            color: #222;
+        :root {
+            --bg: #fafbfc;
+            --panel: #ffffff;
+            --panel-2: #f3f5f8;
+            --border: #e3e7ee;
+            --text: #1f2430;
+            --text-dim: #6b7280;
+            --accent: #4f46e5;
+            --accent-soft: rgba(79, 70, 229, 0.08);
+            --ok: #059669;
+            --warn: #d97706;
+            --err: #dc2626;
+            --mono: "SFMono-Regular", "JetBrains Mono", Consolas, Menlo, monospace;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem 5rem;
+        }
+        header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
         }
         h1 {
-            margin-bottom: 0.25rem;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            max-width: 1100px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 0.6rem 0.8rem;
-            text-align: left;
-            vertical-align: top;
-        }
-        th {
-            background: #f5f5f5;
+            font-size: 1.5rem;
             font-weight: 600;
+            letter-spacing: -0.01em;
+            margin: 0;
         }
-        tr:nth-child(even) td {
-            background: #fafafa;
+        h1 .dot { color: var(--accent); }
+        .meta {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-family: var(--mono);
         }
-        code {
-            font-family: "SFMono-Regular", Consolas, monospace;
-            font-size: 0.9rem;
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding: 0.75rem 0;
+            z-index: 10;
         }
-        .status-2xx { color: #2e7d32; font-weight: 600; }
-        .status-4xx { color: #ef6c00; font-weight: 600; }
-        .status-5xx { color: #c62828; font-weight: 600; }
+        .tab {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .tab:hover {
+            color: var(--text);
+            border-color: #3a4160;
+        }
+        .tab.active {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .tab .count {
+            font-size: 0.7rem;
+            background: var(--panel-2);
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            color: var(--text-dim);
+        }
+        .tab.active .count {
+            background: rgba(124, 156, 255, 0.2);
+            color: var(--accent);
+        }
+        .group {
+            margin-bottom: 2.5rem;
+        }
+        .group-title {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+            padding-left: 0.2rem;
+        }
+        .group-title .badge {
+            background: var(--panel-2);
+            color: var(--text);
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            font-size: 0.7rem;
+        }
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table thead th {
+            background: var(--panel-2);
+            color: var(--text-dim);
+            font-weight: 500;
+            text-align: left;
+            padding: 0.7rem 1rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+        .table tbody td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .table tbody tr:hover td {
+            background: rgba(124, 156, 255, 0.04);
+        }
+        .code {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+        }
+        .pill {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            border-radius: 5px;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            font-weight: 500;
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+        }
+        .status::before {
+            content: "";
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .status-2xx { color: var(--ok); }
+        .status-4xx { color: var(--warn); }
+        .status-5xx { color: var(--err); }
+        .message {
+            color: var(--text);
+        }
+        .name {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-family: var(--mono);
+        }
+        footer code {
+            color: var(--text);
+            background: var(--panel);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+        }
+        .empty {
+            text-align: center;
+            color: var(--text-dim);
+            padding: 3rem;
+            background: var(--panel);
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
-<h1>Error Code 목록</h1>
-<p class="subtitle">
-    <span th:text="'총 ' + ${#arrays.length(errorCodes)} + '건'">총 0건</span>
-    · 이 페이지는 <code>prod</code> 프로파일에서는 노출되지 않습니다.
-</p>
+<div class="container">
+    <header>
+        <h1>Error Code <span class="dot">·</span> Reference</h1>
+        <div class="meta">
+            <span th:text="'total ' + ${#arrays.length(errorCodes)}">total 0</span>
+        </div>
+    </header>
 
-<table>
-    <thead>
-    <tr>
-        <th style="width: 20%;">Name</th>
-        <th style="width: 15%;">Code</th>
-        <th style="width: 15%;">HTTP Status</th>
-        <th>Message</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="ec : ${errorCodes}">
-        <td><code th:text="${ec.name()}">NAME</code></td>
-        <td><code th:text="${ec.code}">COMMON_000</code></td>
-        <td>
-            <span th:classappend="${ec.httpStatus.is2xxSuccessful()} ? 'status-2xx'
-                                : (${ec.httpStatus.is4xxClientError()} ? 'status-4xx'
-                                : (${ec.httpStatus.is5xxServerError()} ? 'status-5xx' : ''))"
-                  th:text="${ec.httpStatus.value()} + ' ' + ${ec.httpStatus.name()}">400 BAD_REQUEST</span>
-        </td>
-        <td th:text="${ec.message}">메시지</td>
-    </tr>
-    </tbody>
-</table>
+    <nav class="tabs" id="tabs"></nav>
+
+    <main id="groups">
+        <div class="group"
+             th:each="entry : ${errorCodes}"
+             th:with="domain=${#strings.substringBefore(entry.code, '_')}"
+             th:attr="data-domain=${domain}"
+             style="display:none;">
+        </div>
+        <!--/* 실제 렌더는 아래에서 JS로 그룹핑. 위 루프는 dummy placeholder */-->
+    </main>
+
+    <template id="row-data">
+        <div th:each="ec : ${errorCodes}"
+             th:attr="data-domain=${#strings.substringBefore(ec.code, '_')},
+                      data-name=${ec.name()},
+                      data-code=${ec.code},
+                      data-status=${ec.httpStatus.value()},
+                      data-status-name=${ec.httpStatus.name()},
+                      data-message=${ec.message}">
+        </div>
+    </template>
+
+    <footer>
+        이 페이지는 <code>prod</code> 프로파일에서는 노출되지 않습니다 <span class="dot">·</span>
+        <code>ErrorCode.values()</code> 런타임 조회 — enum 추가 시 자동 반영
+    </footer>
+</div>
+
+<script>
+    (function () {
+        const rowTemplate = document.getElementById('row-data');
+        const rows = Array.from(rowTemplate.content.querySelectorAll('[data-domain]'))
+            .map(el => ({
+                domain: el.dataset.domain,
+                name: el.dataset.name,
+                code: el.dataset.code,
+                status: parseInt(el.dataset.status, 10),
+                statusName: el.dataset.statusName,
+                message: el.dataset.message,
+            }));
+
+        const domains = Array.from(new Set(rows.map(r => r.domain))).sort();
+        const tabsEl = document.getElementById('tabs');
+        const groupsEl = document.getElementById('groups');
+
+        function statusClass(s) {
+            if (s >= 200 && s < 300) return 'status-2xx';
+            if (s >= 400 && s < 500) return 'status-4xx';
+            if (s >= 500) return 'status-5xx';
+            return '';
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[c]);
+        }
+
+        function renderTable(list) {
+            return `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 24%">Name</th>
+                            <th style="width: 16%">Code</th>
+                            <th style="width: 22%">HTTP Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map(r => `
+                            <tr>
+                                <td><span class="name">${escapeHtml(r.name)}</span></td>
+                                <td><span class="pill">${escapeHtml(r.code)}</span></td>
+                                <td><span class="status ${statusClass(r.status)}">${r.status} ${escapeHtml(r.statusName)}</span></td>
+                                <td class="message">${escapeHtml(r.message)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function render(activeDomain) {
+            Array.from(tabsEl.querySelectorAll('.tab')).forEach(t => {
+                t.classList.toggle('active', t.dataset.filter === activeDomain);
+            });
+
+            if (activeDomain === '__ALL__') {
+                groupsEl.innerHTML = domains.map(d => {
+                    const list = rows.filter(r => r.domain === d);
+                    return `
+                        <section class="group">
+                            <div class="group-title">${escapeHtml(d)}<span class="badge">${list.length}</span></div>
+                            ${renderTable(list)}
+                        </section>
+                    `;
+                }).join('');
+            } else {
+                const list = rows.filter(r => r.domain === activeDomain);
+                groupsEl.innerHTML = list.length
+                    ? `<section class="group">${renderTable(list)}</section>`
+                    : `<div class="empty">해당 도메인의 에러 코드가 없습니다.</div>`;
+            }
+        }
+
+        function makeTab(label, filter, count) {
+            const btn = document.createElement('button');
+            btn.className = 'tab';
+            btn.dataset.filter = filter;
+            btn.innerHTML = `${escapeHtml(label)} <span class="count">${count}</span>`;
+            btn.addEventListener('click', () => render(filter));
+            return btn;
+        }
+
+        tabsEl.appendChild(makeTab('전체', '__ALL__', rows.length));
+        domains.forEach(d => {
+            const count = rows.filter(r => r.domain === d).length;
+            tabsEl.appendChild(makeTab(d, d, count));
+        });
+
+        render('__ALL__');
+    })();
+</script>
 </body>
 </html>
