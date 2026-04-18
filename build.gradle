@@ -46,6 +46,15 @@ jacoco {
 	toolVersion = '0.8.12'
 }
 
+def jacocoExcludes = [
+	'**/*Application*',
+	'**/dto/**',
+	'**/response/**',
+	'**/config/**',
+	'**/exception/**',
+	'**/Q*.class',
+]
+
 tasks.named('test') {
 	useJUnitPlatform()
 	finalizedBy tasks.named('jacocoTestReport')
@@ -59,4 +68,17 @@ tasks.named('jacocoTestReport') {
 		csv.required = false
 		html.outputLocation = layout.buildDirectory.dir('reports/jacoco')
 	}
+	classDirectories.setFrom(
+		files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: jacocoExcludes)
+		})
+	)
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+	classDirectories.setFrom(
+		files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: jacocoExcludes)
+		})
+	)
 }
