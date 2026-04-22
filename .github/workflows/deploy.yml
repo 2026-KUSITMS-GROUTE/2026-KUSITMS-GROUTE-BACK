@@ -65,6 +65,7 @@ jobs:
                 ("export APP_IMAGE=" + $image),
                 ("export SPRING_PROFILES_ACTIVE=" + $env_val),
                 "export REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' /tmp/groute.env | cut -d= -f2-)",
+                "[ -n \"$REDIS_PASSWORD\" ] || { echo 'REDIS_PASSWORD가 SSM에 없습니다'; exit 1; }",
                 ("aws s3 cp s3://glit-images/deploy/" + $sha + "/docker-compose.yml /home/ssm-user/glit/docker-compose.yml"),
                 "docker stop groute-server 2>/dev/null || true",
                 "docker rm   groute-server 2>/dev/null || true",
