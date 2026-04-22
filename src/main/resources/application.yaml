@@ -22,6 +22,12 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -52,6 +58,15 @@ spring:
             scope:
               - profile_nickname
               - account_email
+          google:
+            client-name: Google
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            authorization-grant-type: authorization_code
+            scope:
+              - profile
+              - email
           naver:
             client-name: Naver
             client-id: ${NAVER_CLIENT_ID}
@@ -86,7 +101,8 @@ server:
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-must-be-changed-in-production-env}
-  expiration: ${JWT_EXPIRATION:86400000}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
 
 springdoc:
   swagger-ui:
