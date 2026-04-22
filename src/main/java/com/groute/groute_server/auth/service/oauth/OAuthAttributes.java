@@ -43,7 +43,7 @@ public record OAuthAttributes(
     }
 
     private static OAuthAttributes ofKakao(Map<String, Object> attributes) {
-        String providerUid = String.valueOf(attributes.get("id"));
+        String providerUid = requireProviderUid(attributes.get("id"), "kakao");
         String email = null;
         if (attributes.get("kakao_account") instanceof Map<?, ?> account
                 && account.get("email") instanceof String kakaoEmail) {
@@ -53,7 +53,7 @@ public record OAuthAttributes(
     }
 
     private static OAuthAttributes ofGoogle(Map<String, Object> attributes) {
-        String providerUid = String.valueOf(attributes.get("sub"));
+        String providerUid = requireProviderUid(attributes.get("sub"), "google");
         String email = (String) attributes.get("email");
         return new OAuthAttributes(SocialProvider.GOOGLE, providerUid, email, attributes);
     }
@@ -63,8 +63,20 @@ public record OAuthAttributes(
             throw new BusinessException(
                     ErrorCode.INVALID_OAUTH_RESPONSE, "네이버 응답 형식이 올바르지 않습니다: response 누락");
         }
-        String providerUid = String.valueOf(response.get("id"));
+        String providerUid = requireProviderUid(response.get("id"), "naver");
         String email = response.get("email") instanceof String e ? e : null;
         return new OAuthAttributes(SocialProvider.NAVER, providerUid, email, attributes);
+    }
+
+    /**
+     * raw 값이 null이면 {@link ErrorCode#INVALID_OAUTH_RESPONSE}로 실패. {@code String.valueOf(null)}이
+     * "null" 문자열을 만들어 compact constructor의 {@code isBlank()} 검증을 통과하는 버그를 방지한다.
+     */
+    private static String requireProviderUid(Object raw, String provider) {
+        if (raw == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_OAUTH_RESPONSE, provider + " 응답에 유저 식별자가 누락되었습니다");
+        }
+        return raw.toString();
     }
 }
