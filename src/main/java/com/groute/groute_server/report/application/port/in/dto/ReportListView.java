@@ -19,10 +19,6 @@ public record ReportListView(List<ReportItemView> reports) {
         return new ReportListView(reports.stream().map(r -> ReportItemView.from(r, user)).toList());
     }
 
-    public static ReportListView from(List<Report> reports) {
-        throw new UnsupportedOperationException("use from(reports, user) instead");
-    }
-
     public record ReportItemView(
             Long reportId,
             ReportType reportType,
