@@ -50,6 +50,10 @@ public class Report extends BaseTimeEntity {
     @Column(name = "star_count_at", nullable = false)
     private Integer starCountAt;
 
+    /** 리포트 생성 시 유저가 선택한 심화기록 수. 커리어 리포트 상세 서브텍스트용(RPT003). */
+    @Column(name = "selected_star_count", nullable = false)
+    private Integer selectedStarCount;
+
     /** 커리어 브랜딩 문장. 리포트 목록 카드에 노출(RPT001). */
     @Column(name = "title", length = 200)
     private String title;
@@ -74,12 +78,14 @@ public class Report extends BaseTimeEntity {
      * @param reportType MINI / CAREER
      * @param starCountAt 발행 시점 누적 STAR 수
      */
-    public static Report create(User user, ReportType reportType, int starCountAt) {
+    public static Report create(
+            User user, ReportType reportType, int starCountAt, int selectedStarCount) {
         Report report = new Report();
         report.user = user;
         report.reportType = reportType;
         report.status = ReportStatus.GENERATING;
         report.starCountAt = starCountAt;
+        report.selectedStarCount = selectedStarCount;
         report.retryCount = 0;
         return report;
     }
