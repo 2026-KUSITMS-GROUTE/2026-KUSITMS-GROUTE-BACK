@@ -22,6 +22,7 @@ import com.groute.groute_server.common.exception.ErrorCode;
 import com.groute.groute_server.report.application.port.in.dto.ReportDetailView;
 import com.groute.groute_server.report.application.port.in.dto.ReportGaugeView;
 import com.groute.groute_server.report.application.port.in.dto.ReportListView;
+import com.groute.groute_server.report.application.port.out.LoadUserPort;
 import com.groute.groute_server.report.application.port.out.ReportQueryPort;
 import com.groute.groute_server.report.application.port.out.StarRecordCountQueryPort;
 import com.groute.groute_server.report.domain.Report;
@@ -38,6 +39,7 @@ class ReportQueryServiceTest {
 
     @Mock ReportQueryPort reportQueryPort;
     @Mock StarRecordCountQueryPort starRecordCountQueryPort;
+    @Mock LoadUserPort loadUserPort;
 
     @InjectMocks ReportQueryService service;
 
@@ -137,6 +139,7 @@ class ReportQueryServiceTest {
                             OffsetDateTime.now());
             given(reportQueryPort.findAllByUserIdOrderByCreatedAtDesc(USER_ID))
                     .willReturn(List.of(career, mini));
+            given(loadUserPort.findUserById(USER_ID)).willReturn(user(USER_ID));
 
             ReportListView view = service.getList(USER_ID);
 
@@ -150,6 +153,7 @@ class ReportQueryServiceTest {
         void should_returnEmptyList_when_noReports() {
             given(reportQueryPort.findAllByUserIdOrderByCreatedAtDesc(USER_ID))
                     .willReturn(List.of());
+            given(loadUserPort.findUserById(USER_ID)).willReturn(user(USER_ID));
 
             ReportListView view = service.getList(USER_ID);
 
@@ -253,6 +257,9 @@ class ReportQueryServiceTest {
             ctor.setAccessible(true);
             User user = ctor.newInstance();
             ReflectionTestUtils.setField(user, "id", id);
+            ReflectionTestUtils.setField(user, "nickname", "테스트유저");
+            ReflectionTestUtils.setField(
+                    user, "jobRole", com.groute.groute_server.user.enums.JobRole.DEVELOPER);
             return user;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
