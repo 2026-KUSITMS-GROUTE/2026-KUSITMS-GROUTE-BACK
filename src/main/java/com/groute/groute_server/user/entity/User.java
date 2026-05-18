@@ -97,6 +97,16 @@ public class User extends SoftDeleteEntity {
     @Column(name = "last_record_date")
     private LocalDate lastRecordDate;
 
+    /** 홈 복귀 시 코치마크 노출 여부. AI 태깅 완료로 1번째 STAR가 확정될 때 true로 설정되고, 홈 요약 조회 시 소비(false 초기화)된다. */
+    @Column(name = "pending_first_star_coach_mark", nullable = false)
+    private boolean pendingFirstStarCoachMark = false;
+
+    /**
+     * 홈 복귀 시 노출할 리포트 모달 종류(MINI/FULL). 10·20·30... 번째 STAR 태깅 완료 시 설정되고, 홈 요약 조회 시 소비(null 초기화)된다.
+     */
+    @Column(name = "pending_report_modal_type", length = 10)
+    private String pendingReportModalType;
+
     /** 소셜 로그인 신규 가입 시 호출. 온보딩 전이므로 프로필 필드는 모두 NULL로 둔다. */
     public static User createForSocialLogin() {
         return new User();
@@ -220,6 +230,30 @@ public class User extends SoftDeleteEntity {
      *
      * @param kstToday KST 기준 오늘 날짜.
      */
+    /** AI 태깅으로 1번째 STAR가 확정될 때 호출. 홈 복귀 시 코치마크를 노출하도록 예약한다. */
+    public void markPendingCoachMark() {
+        this.pendingFirstStarCoachMark = true;
+    }
+
+    /** 10·20·30... 번째 STAR 태깅 완료 시 호출. 홈 복귀 시 노출할 리포트 모달 종류를 예약한다. */
+    public void markPendingReportModal(String modalType) {
+        this.pendingReportModalType = modalType;
+    }
+
+    /** 홈 요약 조회 시 호출. 코치마크 노출 여부를 반환하고 플래그를 false로 초기화한다. */
+    public boolean consumeCoachMark() {
+        boolean val = this.pendingFirstStarCoachMark;
+        this.pendingFirstStarCoachMark = false;
+        return val;
+    }
+
+    /** 홈 요약 조회 시 호출. 리포트 모달 종류를 반환하고 플래그를 null로 초기화한다. */
+    public String consumeReportModal() {
+        String val = this.pendingReportModalType;
+        this.pendingReportModalType = null;
+        return val;
+    }
+
     public RecordStreakSnapshot streakSnapshotAsOf(LocalDate kstToday) {
         Objects.requireNonNull(kstToday, "kstToday");
         if (this.lastRecordDate == null) {

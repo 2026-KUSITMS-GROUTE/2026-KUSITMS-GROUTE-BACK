@@ -47,7 +47,8 @@ import com.groute.groute_server.user.entity.User;
 class ScrumSyncServiceTest {
 
     private static final Long USER_ID = 1L;
-    private static final LocalDate DATE = LocalDate.of(2026, 5, 4);
+    private static final LocalDate DATE = LocalDate.now();
+    private static final LocalDate YESTERDAY = LocalDate.now().minusDays(1);
 
     @Mock ScrumTitleRepositoryPort scrumTitleRepositoryPort;
     @Mock ScrumQueryPort scrumQueryPort;
@@ -108,7 +109,7 @@ class ScrumSyncServiceTest {
         void should_throwScrumNotFound_when_anyScrumNotOwned() {
             // given — 요청 scrumId 10L, 11L 중 10L만 본인 소유
             ScrumTitle title = title(1L, "P", "F");
-            Scrum owned = scrum(10L, title, "old", false, DATE.minusDays(1));
+            Scrum owned = scrum(10L, title, "old", false, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -128,7 +129,7 @@ class ScrumSyncServiceTest {
         void should_throwScrumNotFound_when_scrumOnOtherDate() {
             // given — scrumId는 본인 소유지만 currentScrums(=DATE)에는 없음
             ScrumTitle title = title(1L, "P", "F");
-            Scrum otherDateScrum = scrum(10L, title, "x", false, DATE.minusDays(1));
+            Scrum otherDateScrum = scrum(10L, title, "x", false, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -185,7 +186,7 @@ class ScrumSyncServiceTest {
         void should_callUpdateContent_when_contentChanged() {
             // given — DB의 scrum 10 content "old", 요청 "new"
             ScrumTitle title = title(1L, "P", "F");
-            Scrum existing = scrum(10L, title, "old", false, DATE.minusDays(1));
+            Scrum existing = scrum(10L, title, "old", false, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -207,7 +208,7 @@ class ScrumSyncServiceTest {
         void should_notCallUpdateContent_when_contentUnchanged() {
             // given
             ScrumTitle title = title(1L, "P", "F");
-            Scrum existing = scrum(10L, title, "same", false, DATE.minusDays(1));
+            Scrum existing = scrum(10L, title, "same", false, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -232,7 +233,7 @@ class ScrumSyncServiceTest {
         void should_softDeleteAndCascadeAndDecrement_when_itemMissingFromRequest() {
             // given — DB에 scrum 10 있음, 요청은 빈 items
             ScrumTitle title = title(1L, "P", "F");
-            Scrum existing = scrum(10L, title, "x", false, DATE.minusDays(1));
+            Scrum existing = scrum(10L, title, "x", false, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -302,7 +303,7 @@ class ScrumSyncServiceTest {
         void should_throwLockedStar_when_deletingHasStarScrum() {
             // given — DB에 hasStar 스크럼 1개, 요청에서 빠짐
             ScrumTitle title = title(1L, "P", "F");
-            Scrum starred = scrum(10L, title, "x", true, DATE.minusDays(1));
+            Scrum starred = scrum(10L, title, "x", true, YESTERDAY);
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(title));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
@@ -330,8 +331,8 @@ class ScrumSyncServiceTest {
             // given
             ScrumTitle t1 = title(1L, "P1", "F1");
             ScrumTitle t2 = title(2L, "P2", "F2");
-            Scrum a = scrum(100L, t1, "A_old", false, DATE.minusDays(1)); // 수정 대상
-            Scrum b = scrum(101L, t1, "B", false, DATE.minusDays(1)); // 삭제 대상
+            Scrum a = scrum(100L, t1, "A_old", false, YESTERDAY); // 수정 대상
+            Scrum b = scrum(101L, t1, "B", false, YESTERDAY); // 삭제 대상
             given(scrumTitleRepositoryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
                     .willReturn(List.of(t1, t2));
             given(scrumQueryPort.findAllByIdInAndUserId(anyCollection(), anyLong()))
