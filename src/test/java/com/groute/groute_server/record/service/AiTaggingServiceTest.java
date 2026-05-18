@@ -26,6 +26,7 @@ import com.groute.groute_server.common.exception.ErrorCode;
 import com.groute.groute_server.record.adapter.in.web.dto.AiTaggingResultResponse;
 import com.groute.groute_server.record.adapter.in.web.dto.AiTaggingStatusResponse;
 import com.groute.groute_server.record.application.port.out.AiTaggingJobPort;
+import com.groute.groute_server.record.application.port.out.UserPort;
 import com.groute.groute_server.record.application.port.out.scrum.ScrumQueryPort;
 import com.groute.groute_server.record.application.port.out.scrumtitle.ScrumTitleRepositoryPort;
 import com.groute.groute_server.record.application.port.out.star.StarRecordRepositoryPort;
@@ -56,6 +57,7 @@ class AiTaggingServiceTest {
     @Mock private StarTagQueryPort starTagPort;
     @Mock private ScrumQueryPort scrumQueryPort;
     @Mock private ScrumTitleRepositoryPort scrumTitleRepositoryPort;
+    @Mock private UserPort userPort;
 
     @InjectMocks private AiTaggingService aiTaggingService;
 
@@ -383,6 +385,8 @@ class AiTaggingServiceTest {
             given(starRecordPort.existsUntaggedByUserAndDate(USER_ID, DATE)).willReturn(false);
             given(scrumQueryPort.findAllByUserAndDate(USER_ID, DATE))
                     .willReturn(List.of(scrumWithTitle(1L, 100L), scrumWithTitle(2L, 100L)));
+            given(starRecordPort.countTaggedByUserId(USER_ID)).willReturn(5L);
+            given(userPort.findById(USER_ID)).willReturn(User.createForSocialLogin());
 
             aiTaggingService.completeTagging(STAR_RECORD_ID);
 
@@ -396,6 +400,8 @@ class AiTaggingServiceTest {
             StarRecord record = makeStarRecordWithScrum(USER_ID, StarStep.DONE);
             given(starRecordPort.findByIdWithScrum(STAR_RECORD_ID)).willReturn(Optional.of(record));
             given(starRecordPort.existsUntaggedByUserAndDate(USER_ID, DATE)).willReturn(true);
+            given(starRecordPort.countTaggedByUserId(USER_ID)).willReturn(5L);
+            given(userPort.findById(USER_ID)).willReturn(User.createForSocialLogin());
 
             aiTaggingService.completeTagging(STAR_RECORD_ID);
 
