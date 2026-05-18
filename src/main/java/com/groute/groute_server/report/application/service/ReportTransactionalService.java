@@ -62,7 +62,9 @@ public class ReportTransactionalService {
         int totalStarCount = loadStarRecordPort.countCompletedByUserId(command.userId());
 
         // 5. reports row INSERT
-        Report report = Report.create(user, command.reportType(), totalStarCount);
+        Report report =
+                Report.create(
+                        user, command.reportType(), totalStarCount, command.starRecordIds().size());
         Report savedReport = saveReportPort.save(report);
 
         // 6. 선택된 심화기록 로드 (userId로 소유권 검증)
