@@ -30,10 +30,15 @@ public class HomeSummaryService implements HomeSummaryUseCase {
         User user = userPort.findById(userId);
         boolean isFirstStar = user.consumeCoachMark();
         String modalType = user.consumeReportModal();
-        ReportModal reportModal =
-                modalType != null
-                        ? new ReportModal(true, ReportModalType.valueOf(modalType))
-                        : ReportModal.none();
+        ReportModal reportModal;
+        try {
+            reportModal =
+                    modalType != null
+                            ? new ReportModal(true, ReportModalType.valueOf(modalType))
+                            : ReportModal.none();
+        } catch (IllegalArgumentException e) {
+            reportModal = ReportModal.none();
+        }
         return new HomeSummaryResult(isFirstStar, reportModal);
     }
 }
