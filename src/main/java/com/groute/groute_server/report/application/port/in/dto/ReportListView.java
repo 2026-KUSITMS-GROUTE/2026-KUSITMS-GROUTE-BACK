@@ -6,6 +6,7 @@ import java.util.List;
 import com.groute.groute_server.report.domain.Report;
 import com.groute.groute_server.report.domain.enums.ReportStatus;
 import com.groute.groute_server.report.domain.enums.ReportType;
+import com.groute.groute_server.user.entity.User;
 
 /**
  * RPT-001: 리포트 목록 조회 뷰.
@@ -14,8 +15,12 @@ import com.groute.groute_server.report.domain.enums.ReportType;
  */
 public record ReportListView(List<ReportItemView> reports) {
 
+    public static ReportListView from(List<Report> reports, User user) {
+        return new ReportListView(reports.stream().map(r -> ReportItemView.from(r, user)).toList());
+    }
+
     public static ReportListView from(List<Report> reports) {
-        return new ReportListView(reports.stream().map(ReportItemView::from).toList());
+        throw new UnsupportedOperationException("use from(reports, user) instead");
     }
 
     public record ReportItemView(
@@ -27,12 +32,21 @@ public record ReportListView(List<ReportItemView> reports) {
             String previewText,
             String competencyStatSummary) {
 
-        public static ReportItemView from(Report report) {
+        public static ReportItemView from(Report report, User user) {
             String createdAt =
                     report.getCreatedAt()
                             .atZoneSameInstant(ZoneId.of("Asia/Seoul"))
                             .toLocalDate()
-                            .toString();
+                            .toString()
+                            .replace('-', '.');
+
+            String title =
+                    report.getReportType() == ReportType.MINI
+                            ? user.getNickname()
+                                    + "님은 어떤 "
+                                    + user.getJobRole().getLabel()
+                                    + "으로 성장하고 있을까요?"
+                            : report.getTitle();
 
             String previewText = null;
             String competencyStatSummary = null;
@@ -55,7 +69,7 @@ public record ReportListView(List<ReportItemView> reports) {
                     report.getReportType(),
                     report.getStatus(),
                     createdAt,
-                    report.getTitle(),
+                    title,
                     previewText,
                     competencyStatSummary);
         }

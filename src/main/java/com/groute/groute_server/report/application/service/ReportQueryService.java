@@ -15,10 +15,12 @@ import com.groute.groute_server.report.application.port.in.GetReportListUseCase;
 import com.groute.groute_server.report.application.port.in.dto.ReportDetailView;
 import com.groute.groute_server.report.application.port.in.dto.ReportGaugeView;
 import com.groute.groute_server.report.application.port.in.dto.ReportListView;
+import com.groute.groute_server.report.application.port.out.LoadUserPort;
 import com.groute.groute_server.report.application.port.out.ReportQueryPort;
 import com.groute.groute_server.report.application.port.out.StarRecordCountQueryPort;
 import com.groute.groute_server.report.domain.Report;
 import com.groute.groute_server.report.domain.enums.ReportStatus;
+import com.groute.groute_server.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +39,7 @@ public class ReportQueryService
 
     private final ReportQueryPort reportQueryPort;
     private final StarRecordCountQueryPort starRecordCountQueryPort;
+    private final LoadUserPort loadUserPort;
 
     /**
      * RPT-001: 리포트 게이지 조회.
@@ -65,7 +68,8 @@ public class ReportQueryService
     @Override
     public ReportListView getList(Long userId) {
         List<Report> reports = reportQueryPort.findAllByUserIdOrderByCreatedAtDesc(userId);
-        return ReportListView.from(reports);
+        User user = loadUserPort.findUserById(userId);
+        return ReportListView.from(reports, user);
     }
 
     /**
